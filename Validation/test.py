@@ -17,16 +17,18 @@ from tqdm import tqdm
 import pandas as pd
 
 """### Set arguments"""
-parser = argparse.ArgumentParser(description='Train on Chinese OCR')
+parser = argparse.ArgumentParser(description='Test on HUST-OBS')
 
-parser.add_argument('--lr', '--learning-rate', default=0.00015, type=float, metavar='LR', help='initial learning rate',
+parser.add_argument('--lr', '--learning-rate', default=0.015, type=float, metavar='LR', help='initial learning rate',
                     dest='lr')
-parser.add_argument('--epochs', default=1800, type=int, metavar='N', help='number of total epochs to run')
+parser.add_argument('--epochs', default=1000, type=int, metavar='N', help='number of total epochs to run')
 parser.add_argument('--batch-size', default=512, type=int, metavar='N', help='mini-batch size')
 parser.add_argument('--wd', default=5e-4, type=float, metavar='W', help='weight decay')
+
+
 # utils
-parser.add_argument('--resume', default='model3/model_last.pth', type=str, metavar='PATH', help='path to latest checkpoint (default: none)')
-parser.add_argument('--results-dir', default='model3', type=str, metavar='PATH', help='path to cache (default: none)')
+parser.add_argument('--resume', default='../model4/model_last.pth', type=str, metavar='PATH', help='path to latest checkpoint (default: none)')
+parser.add_argument('--results-dir', default='test', type=str, metavar='PATH', help='path to cache (default: none)')
 args = parser.parse_args()  # running in command line
 if args.results_dir == '':
     args.results_dir = './cache-' + datetime.now().strftime("%Y-%m-%d-%H-%M-%S-moco")
@@ -50,6 +52,7 @@ class RandomGaussianBlur(object):
         else:
             return img
 
+
 def jioayan(image):
     if np.random.random() < 0.5:
         image1 = np.array(image)
@@ -62,12 +65,14 @@ def jioayan(image):
         # 在随机位置生成椒盐噪声
         coords_salt = [np.random.randint(0, i - 1, int(num_salt)) for i in image1.shape]
         coords_pepper = [np.random.randint(0, i - 1, int(num_pepper)) for i in image1.shape]
+        # image1[coords_salt] = 255
         image1[coords_salt[0], coords_salt[1], :] = 255
         image1[coords_pepper[0], coords_pepper[1], :] = 0
         image = Image.fromarray(image1)
     return image
-def pengzhang(image):
 
+
+def pengzhang(image):
     # 生成一个0到2之间的随机数
     random_value = random.random() * 3
 
@@ -77,14 +82,15 @@ def pengzhang(image):
         image = cv2.erode(image, kernel, iterations=1)
     elif random_value < 2:  # 1/3的概率进行除法操作
         he = random.randint(1, 3)  # 生成一个1到10之间的随机整数作为除数
-        kernel = np.ones((he,he),np.uint8)
-        image = cv2.dilate(image,kernel,iterations = 1)
+        kernel = np.ones((he, he), np.uint8)
+        image = cv2.dilate(image, kernel, iterations=1)
     return image
+
 
 class TrainData(Dataset):
     def __init__(self, transform=None):
         super(TrainData, self).__init__()
-        with open('八万训练集.json', 'r') as f:
+        with open('train0.2.json', 'r') as f:
             images = json.load(f)
             labels = images
         self.images, self.labels = images, labels
@@ -92,11 +98,17 @@ class TrainData(Dataset):
 
     def __getitem__(self, item):
         # 读取图片
-        image = Image.open(self.images[item]['path'])
+        image = Image.open(self.images[item]['path'].replace('\\','/'))
         # 转换
         if image.mode == 'L':
             image = image.convert('RGB')
-        x, y = 72,72
+        image_width, image_height = image.size
+        if image_width > image_height:
+            x = 72
+            y = round(image_height / image_width * 72)
+        else:
+            y = 72
+            x = round(image_width / image_height * 72)
         sizey, sizex = 129, 129
         if y < 128:
             while sizey > 128 or sizey < 16:
@@ -107,7 +119,7 @@ class TrainData(Dataset):
         dx = 128 - sizex  # 差值
         dy = 128 - sizey
         if dx > 0:
-            xl =-1
+            xl = -1
             while xl > dx or xl < 0:
                 xl = round(dx / 2)
                 xl = round(random.gauss(xl, 10))
@@ -129,13 +141,14 @@ class TrainData(Dataset):
         random_gaussian_blur = RandomGaussianBlur()
         image = random_gaussian_blur(image)
         train_transform = transforms.Compose([
-            transforms.Resize((sizey, sizex)),
+            transforms.Resize((sizey,sizex)),
+            transforms.RandomHorizontalFlip(p=0.5),
             transforms.Pad([xl, yl, xr, yr], fill=(255, 255, 255), padding_mode='constant'),
             transforms.RandomRotation(degrees=(-15, 15), center=(round(64), round(64)), fill=(255, 255, 255)),
             transforms.RandomApply([transforms.ColorJitter(0.4, 0.4, 0.4, 0.1)], p=0.8),
             transforms.RandomGrayscale(p=0.2),
             transforms.ToTensor(),
-            transforms.Normalize([0.7760929, 0.7760929, 0.7760929], [0.39767382, 0.39767382, 0.39767382])])
+            transforms.Normalize([0.85561067, 0.8557507, 0.85504097], [0.30982512, 0.30969524, 0.31024888])])
         image = train_transform(image)
         label = torch.from_numpy(np.array(self.images[item]['label']))
         return image, label
@@ -147,7 +160,7 @@ class TrainData(Dataset):
 class TestData(Dataset):
     def __init__(self, transform=None):
         super(TestData, self).__init__()
-        with open('训练集.json', 'r') as f:
+        with open('test0.2.json', 'r') as f:
             images = json.load(f)
             labels = images
         self.images, self.labels = images, labels
@@ -155,23 +168,47 @@ class TestData(Dataset):
 
     def __getitem__(self, item):
         # 读取图片
-        image = Image.open(self.images[item]['path'])
+        image = Image.open(self.images[item]['path'].replace('\\','/'))
         # 转换
         if image.mode == 'L':
             image = image.convert('RGB')
+        width, height = image.size
+        if width>height:
+            dy = width - height
+
+            yl = round(dy / 2)
+            yr = dy - yl
+            train_transform = transforms.Compose([
+                transforms.Pad([0, yl, 0, yr], fill=(255, 255, 255), padding_mode='constant'),
+                ])
+        else:
+            dx = height - width
+            xl = round(dx / 2)
+            xr = dx - xl
+            train_transform = transforms.Compose([
+                transforms.Pad([xl, 0, xr, 0], fill=(255, 255, 255), padding_mode='constant'),
+                ])
+
+        image = train_transform(image)
         train_transform = transforms.Compose([
+            transforms.Resize((128, 128)),
+            # transforms.CenterCrop(224),
             transforms.ToTensor(),
-            transforms.Normalize([0.7760929, 0.7760929, 0.7760929], [0.39767382, 0.39767382, 0.39767382])])
+            transforms.Normalize([0.85561067, 0.8557507, 0.85504097], [0.30982512, 0.30969524, 0.31024888])])
         image = train_transform(image)
         label = torch.from_numpy(np.array(self.images[item]['label']))
-        return image, label
+        return image, label,self.images[item]['path'].replace('\\','/')
 
     def __len__(self):
         return len(self.images)
 
 
 train_dataset = TrainData()
-train_loader = DataLoader(train_dataset, shuffle=True, batch_size=128, num_workers=16, pin_memory=True)
+train_loader = DataLoader(train_dataset, shuffle=True, batch_size=128, num_workers=0, pin_memory=True)
+
+
+test_dataset = TestData()
+test_loader = DataLoader(test_dataset, shuffle=True, batch_size=128, num_workers=16, pin_memory=True)
 
 
 class Residual(nn.Module):
@@ -227,9 +264,11 @@ b4 = nn.Sequential(*resnet_block(512, 256, 1024, 6, 2))
 b5 = nn.Sequential(*resnet_block(1024, 512, 2048, 2, 2))
 net = nn.Sequential(b1, b2, b3, b4, b5,
                     nn.AdaptiveAvgPool2d((1, 1)),
-                    nn.Flatten(), nn.Linear(2048, 88899))
+                    nn.Flatten(), nn.Linear(2048, 1597))
 
 net = net.cuda(0)
+
+
 def init_weights(m):
     if type(m) == nn.Linear or type(m) == nn.Conv2d:
         nn.init.xavier_uniform_(m.weight)
@@ -258,6 +297,7 @@ def accuracy(y_hat, y):
     cmp = torch.eq(y_hat, y)
     return float(torch.sum(cmp).item())
 
+
 def train(net, data_loader, train_optimizer, epoch, args):
     net.train()
     adjust_learning_rate(optimizer, epoch, args)
@@ -274,7 +314,7 @@ def train(net, data_loader, train_optimizer, epoch, args):
         trainacc += accuracy(y_hat, label)
         # total_num += data_loader.abatch_size
         total_num += image.shape[0]
-        total_loss += l.item() * data_loader.batch_size
+        total_loss += l.item() * image.shape[0]
         train_bar.set_description(
             'Train Epoch: [{}/{}], lr: {:.6f}, Loss: {:.4f}, trainacc: {:.6f}'.format(epoch, args.epochs,
                                                                                       optimizer.param_groups[0]['lr'],
@@ -283,20 +323,44 @@ def train(net, data_loader, train_optimizer, epoch, args):
 
     return total_loss / total_num, trainacc / total_num
 
+def find_key_by_value(dictionary, value):
+    for key, val in dictionary.items():
+        if val == value:
+            return key
+    return None  # 如果没有找到匹配的键，返回None或其他适当的值
+with open('label扣0.2.json', 'r') as f:
+    data = json.load(f)
+
 def test(net, test_data_loader, epoch, args):
     net.eval()
+    pathlist = []
+    labellist = []
+    truelabel=[]
     testacc, total_top5, total_num, test_bar = 0.0, 0.0, 0, tqdm(test_data_loader)
     with torch.no_grad():
-        for image, label in test_bar:
+        for image, label,path in test_bar:
             image, label = image.cuda(0), label.cuda(0)
             y_hat = net(image)
-            total_num += test_data_loader.batch_size
-            testacc += accuracy(y_hat, label)
-            test_bar.set_description(
-                'Test Epoch: [{}/{}], testacc: {:.6f}'.format(epoch, args.epochs, testacc / total_num))
+            y_hat = torch.argmax(y_hat, dim=1)
+            truelabel+=[int(x) for x in label.tolist()]
+            label = [int(x) for x in y_hat.tolist()]
+            labellist=labellist+label
+            path=list(path)
+            pathlist=pathlist+path
+        dataset={}
+        num=0
+        for i in range(len(pathlist)):
+            if labellist[i]!=truelabel[i]:
+                path = pathlist[i]
+                label=find_key_by_value(data,labellist[i])
+                dataset[path]=label
+                num+=1
+        print(num/len(pathlist))
+        with open('错误结果.json', 'w') as f:
+            json.dump(dataset, f, ensure_ascii=False)
     return testacc / total_num
 
-results = {'train_loss': [], 'train_acc': [], 'lr': []}
+results = {'train_loss': [], 'train_acc': [],'test_acc': [], 'lr': []}
 epoch_start = 1
 if args.resume != '':
     checkpoint = torch.load(args.resume)
@@ -307,17 +371,7 @@ if args.resume != '':
 else:
     net.apply(init_weights)
 
-if not os.path.exists(args.results_dir):
-    os.mkdir(args.results_dir)
-with open(args.results_dir + '/args.json', 'w') as fid:
-    json.dump(args.__dict__, fid, indent=2)
 for epoch in range(epoch_start, args.epochs + 1):
-    train_loss, train_acc = train(net, train_loader, optimizer, epoch, args)
-    results['train_loss'].append(train_loss)
-    results['train_acc'].append(train_acc)
-    results['lr'].append(args.lr *0.5 * (1. + math.cos(math.pi * epoch / args.epochs)))
-    data_frame = pd.DataFrame(data=results, index=range(epoch_start, epoch + 1))
-    data_frame.to_csv(args.results_dir + '/log.csv', index_label='epoch')
-    # save model
-    torch.save({'epoch': epoch, 'state_dict': net.state_dict(), 'optimizer': optimizer.state_dict(), },
-               args.results_dir + '/model_last.pth')
+    test_acc = test(net, test_loader, epoch, args)
+    results['test_acc'].append(test_acc)
+    results['lr'].append(args.lr * 0.5 * (1. + math.cos(math.pi * epoch / args.epochs)))
