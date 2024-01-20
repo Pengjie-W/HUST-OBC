@@ -29,7 +29,6 @@ We have open-sourced the HUST-OBS dataset and the models used in the dataset, in
       - Y_?_Filename
       - H_?_Filename
       - .....
-    - .....
 
 Source:’X’ represents "New Compilation of Oracle Bone Scripts", ’L’ represents the "Oracle Bone Script: Six Digit Numerical Code",’G’ represents "GuoXueDaShi" website, ’Y’ represents the "YinQiWenYuan" website, and ’H’ represents the HWOBC dataset, they are the sources of the data.
 ## Chinese OCR
