@@ -36,6 +36,6 @@ Source:’X’ represents "New Compilation of Oracle Bone Scripts", ’L’ repr
 ## Chinese OCR
 The code for training and testing (usage) is provided in the OCR folder. Includes recognition of 88,899 classes of Chinese characters. [Model download](https://figshare.com/s/7ec755b4ba77c6994ed2). Category numbers and their corresponding Chinese characters are stored in OCR/label.json. We have provided models and code with α set to 0.
 ## MoCo
-The code for training and testing (usage) is provided in the MoCo folder.
+The code for training and testing (usage) is provided in the MoCo folder. [Model download](https://figshare.com/s/30c206b1d1f1870ae76f).
 ## Validation
-The code for training and testing (usage) is provided in the Validation folder.
+The code for training and testing (usage) is provided in the Validation folder. [Model download](https://figshare.com/s/f16a16892cb0ee7a710b).
