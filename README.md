@@ -2,7 +2,7 @@
 Oracle Bone Script data collected by VLRLab of HUST
 We have open-sourced the HUST-OBS dataset and the models used in the dataset, including: Chinese OCR, MoCo, and the ResNet50 for Validation.
 ## HUST-OBS Dataset
-[HUST-OBS Download](https://figshare.com/s/95748cdbff1d79dec411)
+[HUST-OBS Download](https://figshare.com/s/0cd69987ad19ec0dfabf)
 ### Tree of our dataset
 - HUST-OBS
   - deciphered
