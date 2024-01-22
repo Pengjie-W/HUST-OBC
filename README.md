@@ -2,7 +2,7 @@
 Oracle Bone Script data collected by VLRLab of HUST
 We have open-sourced the HUST-OBS dataset and the models used in the dataset, including: Chinese OCR, MoCo, and the ResNet50 for Validation.
 ## HUST-OBS Dataset
-[HUST-OBS Download](https://figshare.com/s/e76dbc577334f2d61338)
+[HUST-OBS Download](https://figshare.com/s/8a9c0420312d94fc01e3)
 ### Tree of our dataset
 - HUST-OBS
   - deciphered
@@ -42,7 +42,7 @@ We have open-sourced the HUST-OBS dataset and the models used in the dataset, in
     - chinese_to_ID.json
     - ID_to_chinese.json
 
-Source:’X’ represents "New Compilation of Oracle Bone Scripts", ’L’ represents the "Oracle Bone Script: Six Digit Numerical Code",’G’ represents "GuoXueDaShi" website, ’Y’ represents the "YinQiWenYuan" website, and ’H’ represents the HWOBC dataset, they are the sources of the data.
+Source:’X’ represents "New Compilation of Oracle Bone Scripts", ’L’ represents the "Oracle Bone Script: Six Digit Numerical Code",’G’ represents the "GuoXueDaShi" website, ’Y’ represents the "YinQiWenYuan" website, and ’H’ represents the HWOBC dataset, they are the sources of the data.
 ## Chinese OCR
 The code for training and testing (usage) is provided in the OCR folder. Includes recognition of 88,899 classes of Chinese characters. [Model download](https://figshare.com/s/7ec755b4ba77c6994ed2). Category numbers and their corresponding Chinese characters are stored in OCR/label.json. We have provided models and code with α set to 0.
 ## MoCo
