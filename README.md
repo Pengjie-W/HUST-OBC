@@ -82,8 +82,8 @@ To use MoCo or Validation, you need to download HUST-OBS. You can then directly 
     - [model_last.pth](https://figshare.com/s/30c206b1d1f1870ae76f)
     - ...
   - OCR
-    - [OCR_Dataset](https://figshare.com/s/7ec755b4ba77c6994ed2)
-    - [model_last.pth](https://figshare.com/s/b03be2bccdd867b73e5f)
+    - [OCR_Dataset](https://figshare.com/s/b03be2bccdd867b73e5f)
+    - [model_last.pth](https://figshare.com/s/7ec755b4ba77c6994ed2)
     - ...
   - Validation
     - [checkpoint_ep0600.pth](https://figshare.com/s/21da51dae0a5ef4b408e)
