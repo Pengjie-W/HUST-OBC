@@ -16,25 +16,33 @@ import argparse
 from tqdm import tqdm
 import pandas as pd
 
+
+
 """### Set arguments"""
 parser = argparse.ArgumentParser(description='Train on HUST-OBS')
 
-parser.add_argument('--lr', '--learning-rate', default=0.015, type=float, metavar='LR', help='initial learning rate',
+parser.add_argument('--lr', '--learning-rate', default=0.015, type=float, metavar='LR', help='initi'
+                                                                                             'al learning rate',
                     dest='lr')
 parser.add_argument('--epochs', default=600, type=int, metavar='N', help='number of total epochs to run')
-parser.add_argument('--batch-size', default=512, type=int, metavar='N', help='mini-batch size')
+parser.add_argument('--batch_size', default=128, type=int, metavar='N', help='mini-batch size')
+parser.add_argument('--num_workers', default=24, type=int)
 parser.add_argument('--wd', default=5e-4, type=float, metavar='W', help='weight decay')
 
 # utils
 parser.add_argument('--resume', default='', type=str, metavar='PATH', help='path to latest checkpoint (default: none)')
-parser.add_argument('--results-dir', default='', type=str, metavar='PATH', help='path to cache (default: none)')
+parser.add_argument('--results-dir', default='output', type=str, metavar='PATH', help='path to cache (default: none)')
+parser.add_argument('--checkpoint_freq', type=int, default=10)
+parser.add_argument('--seed', type=int, default=42)
 args = parser.parse_args()  # running in command line
 if args.results_dir == '':
     args.results_dir = './cache-' + datetime.now().strftime("%Y-%m-%d-%H-%M-%S-moco")
 print(args)
 args = parser.parse_args()  # running in command line
-
-
+seed=args.seed
+torch.manual_seed(seed)
+np.random.seed(seed)
+random.seed(seed)
 class RandomGaussianBlur(object):
     def __init__(self, p=0.5, min_kernel_size=3, max_kernel_size=15, min_sigma=0.1, max_sigma=1.0):
         self.p = p
@@ -51,7 +59,7 @@ class RandomGaussianBlur(object):
         else:
             return img
 
-
+# nohup python train.py > output.log 2>&1 &^C
 def jioayan(image):
     if np.random.random() < 0.5:
         image1 = np.array(image)
@@ -89,7 +97,7 @@ def pengzhang(image):
 class TrainData(Dataset):
     def __init__(self, transform=None):
         super(TrainData, self).__init__()
-        with open('train0.2_new.json', 'r') as f:
+        with open('Validation_train.json', 'r',encoding='utf8') as f:
             images = json.load(f)
             labels = images
         self.images, self.labels = images, labels
@@ -148,7 +156,7 @@ class TrainData(Dataset):
             transforms.RandomApply([transforms.ColorJitter(0.4, 0.4, 0.4, 0.1)], p=0.8),
             transforms.RandomGrayscale(p=0.2),
             transforms.ToTensor(),
-            transforms.Normalize([0.85561067, 0.8557507, 0.85504097], [0.30982512, 0.30969524, 0.31024888])])
+            transforms.Normalize([0.85233593, 0.85246795, 0.8517555], [0.31232414, 0.3122127, 0.31273854])])
         image = train_transform(image)
         label = torch.from_numpy(np.array(self.images[item]['label']))
         return image, label
@@ -160,7 +168,7 @@ class TrainData(Dataset):
 class TestData(Dataset):
     def __init__(self, transform=None):
         super(TestData, self).__init__()
-        with open('test0.2_new.json', 'r') as f:
+        with open('Validation_test.json', 'r',encoding='utf8') as f:
             images = json.load(f)
             labels = images
         self.images, self.labels = images, labels
@@ -194,7 +202,7 @@ class TestData(Dataset):
             transforms.Resize((128, 128)),
             # transforms.CenterCrop(224),
             transforms.ToTensor(),
-            transforms.Normalize([0.85561067, 0.8557507, 0.85504097], [0.30982512, 0.30969524, 0.31024888])])
+            transforms.Normalize([0.85233593, 0.85246795, 0.8517555], [0.31232414, 0.3122127, 0.31273854])])
         image = train_transform(image)
         label = torch.from_numpy(np.array(self.images[item]['label']))
         return image, label
@@ -204,11 +212,11 @@ class TestData(Dataset):
 
 
 train_dataset = TrainData()
-train_loader = DataLoader(train_dataset, shuffle=True, batch_size=128, num_workers=16, pin_memory=True)
+train_loader = DataLoader(train_dataset, shuffle=True, batch_size = args.batch_size, num_workers=args.num_workers, pin_memory=True)
 
 
 test_dataset = TestData()
-test_loader = DataLoader(test_dataset, shuffle=True, batch_size=128, num_workers=16, pin_memory=True)
+test_loader = DataLoader(test_dataset, shuffle=True, batch_size = args.batch_size, num_workers=args.num_workers, pin_memory=True)
 
 
 class Residual(nn.Module):
@@ -265,7 +273,7 @@ b4 = nn.Sequential(*resnet_block(512, 256, 1024, 6, 2))
 b5 = nn.Sequential(*resnet_block(1024, 512, 2048, 2, 2))
 net = nn.Sequential(b1, b2, b3, b4, b5,
                     nn.AdaptiveAvgPool2d((1, 1)),
-                    nn.Flatten(), nn.Linear(2048, 1590))
+                    nn.Flatten(), nn.Linear(2048, 1588))
 
 net = net.cuda(0)
 
@@ -302,10 +310,10 @@ def accuracy(y_hat, y):
 def train(net, data_loader, train_optimizer, epoch, args):
     net.train()
     adjust_learning_rate(optimizer, epoch, args)
-    total_loss, total_num, trainacc, train_bar = 0.0, 0, 0.0, tqdm(data_loader)
+    total_loss, total_num, trainacc, train_bar = 0.0, 0, 0.0, tqdm(data_loader,ncols=100)
     for image, label in train_bar:
         image, label = image.cuda(0), label.cuda(0)
-
+        label = label.long()
         y_hat = net(image)
 
         train_optimizer.zero_grad()
@@ -365,6 +373,8 @@ for epoch in range(epoch_start, args.epochs + 1):
     # save statistics
     data_frame = pd.DataFrame(data=results, index=range(epoch_start, epoch + 1))
     data_frame.to_csv(args.results_dir + '/log.csv', index_label='epoch')
-    # save model
-    torch.save({'epoch': epoch, 'state_dict': net.state_dict(), 'optimizer': optimizer.state_dict(), },
-               args.results_dir + '/model_last.pth')
+    if (epoch) % args.checkpoint_freq == 0:
+        checkpoint_name = f'checkpoint_ep{epoch:04}.pth'
+        # save model
+        torch.save({'epoch': epoch, 'state_dict': net.state_dict(), 'optimizer': optimizer.state_dict(), },
+                   args.results_dir + '/'+checkpoint_name)

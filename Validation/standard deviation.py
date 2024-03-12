@@ -9,7 +9,7 @@ from torch.utils.data import DataLoader, Dataset
 class TrainData(Dataset) :
     def __init__(self,transform = None):
         super(TrainData, self).__init__()
-        with open('train.json', 'r', encoding='utf8') as f:
+        with open('Validation_train.json', 'r', encoding='utf8') as f:
             images=json.load(f)
             labels=images
         self.images, self.labels = images, labels
@@ -55,7 +55,7 @@ def getStat(train_data):
     print('Compute mean and variance for training data.')
     print(len(train_data))
     train_loader = torch.utils.data.DataLoader(
-        train_data, batch_size=1, shuffle=False, num_workers=16,
+        train_data, batch_size=1, shuffle=False, num_workers=18,
         pin_memory=True)
     mean = torch.zeros(3)
     std = torch.zeros(3)

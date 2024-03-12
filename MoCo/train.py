@@ -36,7 +36,8 @@ parser.add_argument('--epochs', default=150, type=int, metavar='N', help='number
 parser.add_argument('--schedule', default=[120, 160], nargs='*', type=int, help='learning rate schedule (when to drop lr by 10x); does not take effect if --cos is on')
 parser.add_argument('--cos', action='store_true', help='use cosine lr schedule')
 
-parser.add_argument('--batch-size', default=512, type=int, metavar='N', help='mini-batch size')
+parser.add_argument('--batch_size', default=128, type=int, metavar='N', help='mini-batch size')
+parser.add_argument('--num_workers', default=9, type=int)
 parser.add_argument('--wd', default=5e-4, type=float, metavar='W', help='weight decay')
 
 # moco specific configs:
@@ -54,8 +55,8 @@ parser.add_argument('--knn-k', default=200, type=int, help='k in kNN monitor')
 parser.add_argument('--knn-t', default=0.1, type=float, help='softmax temperature in kNN monitor; could be different with moco-t')
 
 # utils
-parser.add_argument('--resume', default='moco1/model_last.pth', type=str, metavar='PATH', help='path to latest checkpoint (default: none)')
-parser.add_argument('--results-dir', default='moco1', type=str, metavar='PATH', help='path to cache (default: none)')
+parser.add_argument('--resume', default='', type=str, metavar='PATH', help='path to latest checkpoint (default: none)')
+parser.add_argument('--results-dir', default='moco', type=str, metavar='PATH', help='path to cache (default: none)')
 '''
 args = parser.parse_args()  # running in command line
 '''
@@ -149,7 +150,7 @@ def pengzhang(image):
 class Mydata(Dataset) :
     def __init__(self,transform = None):
         super(Mydata, self).__init__()
-        with open('train.json', 'r', encoding='utf8') as f:
+        with open('MOCO_train.json', 'r', encoding='utf8') as f:
             images=json.load(f)
             labels=images
         self.images, self.labels = images, labels
@@ -255,7 +256,7 @@ class Mydata(Dataset) :
         return len(self.images)
 
 train_dataset = Mydata()
-train_loader = DataLoader(train_dataset, shuffle = True, batch_size = 128, num_workers=16,drop_last=True,pin_memory=True,)
+train_loader = DataLoader(train_dataset, shuffle = True, batch_size = args.batch_size, num_workers=args.num_workers,drop_last=True,pin_memory=True,)
 class SplitBatchNorm(nn.BatchNorm2d):
     def __init__(self, num_features, num_splits, **kw):
         super().__init__(num_features, **kw)

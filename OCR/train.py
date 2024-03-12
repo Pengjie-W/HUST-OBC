@@ -15,18 +15,19 @@ import math
 import argparse
 from tqdm import tqdm
 import pandas as pd
-
+# nohup python train.py > output.log 2>&1 &
 """### Set arguments"""
-parser = argparse.ArgumentParser(description='Train on Chinese OCR')
+parser = argparse.ArgumentParser(description='Train on Chinese OCR Dataset')
 
 parser.add_argument('--lr', '--learning-rate', default=0.00015, type=float, metavar='LR', help='initial learning rate',
                     dest='lr')
 parser.add_argument('--epochs', default=1800, type=int, metavar='N', help='number of total epochs to run')
-parser.add_argument('--batch-size', default=512, type=int, metavar='N', help='mini-batch size')
+parser.add_argument('--batch_size', default=128, type=int, metavar='N', help='mini-batch size')
+parser.add_argument('--num_workers', default=9, type=int)
 parser.add_argument('--wd', default=5e-4, type=float, metavar='W', help='weight decay')
 # utils
-parser.add_argument('--resume', default='model3/model_last.pth', type=str, metavar='PATH', help='path to latest checkpoint (default: none)')
-parser.add_argument('--results-dir', default='model3', type=str, metavar='PATH', help='path to cache (default: none)')
+parser.add_argument('--resume', default='', type=str, metavar='PATH', help='path to latest checkpoint (default: none)')
+parser.add_argument('--results-dir', default='model', type=str, metavar='PATH', help='path to cache (default: none)')
 args = parser.parse_args()  # running in command line
 if args.results_dir == '':
     args.results_dir = './cache-' + datetime.now().strftime("%Y-%m-%d-%H-%M-%S-moco")
@@ -84,7 +85,7 @@ def pengzhang(image):
 class TrainData(Dataset):
     def __init__(self, transform=None):
         super(TrainData, self).__init__()
-        with open('八万训练集.json', 'r') as f:
+        with open('OCR_train.json', 'r') as f:
             images = json.load(f)
             labels = images
         self.images, self.labels = images, labels
@@ -144,34 +145,8 @@ class TrainData(Dataset):
         return len(self.images)
 
 
-class TestData(Dataset):
-    def __init__(self, transform=None):
-        super(TestData, self).__init__()
-        with open('训练集.json', 'r') as f:
-            images = json.load(f)
-            labels = images
-        self.images, self.labels = images, labels
-        self.transform = transform
-
-    def __getitem__(self, item):
-        # 读取图片
-        image = Image.open(self.images[item]['path'])
-        # 转换
-        if image.mode == 'L':
-            image = image.convert('RGB')
-        train_transform = transforms.Compose([
-            transforms.ToTensor(),
-            transforms.Normalize([0.7760929, 0.7760929, 0.7760929], [0.39767382, 0.39767382, 0.39767382])])
-        image = train_transform(image)
-        label = torch.from_numpy(np.array(self.images[item]['label']))
-        return image, label
-
-    def __len__(self):
-        return len(self.images)
-
-
 train_dataset = TrainData()
-train_loader = DataLoader(train_dataset, shuffle=True, batch_size=128, num_workers=16, pin_memory=True)
+train_loader = DataLoader(train_dataset, shuffle=True, batch_size = args.batch_size, num_workers=args.num_workers, pin_memory=True)
 
 
 class Residual(nn.Module):
@@ -264,7 +239,7 @@ def train(net, data_loader, train_optimizer, epoch, args):
     total_loss, total_num, trainacc, train_bar = 0.0, 0, 0.0, tqdm(data_loader)
     for image, label in train_bar:
         image, label = image.cuda(0), label.cuda(0)
-
+        label = label.long()
         y_hat = net(image)
 
         train_optimizer.zero_grad()

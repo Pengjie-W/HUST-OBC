@@ -38,9 +38,10 @@ parser.add_argument('--epochs', default=200, type=int, metavar='N', help='number
 parser.add_argument('--schedule', default=[120, 160], nargs='*', type=int, help='learning rate schedule (when to drop lr by 10x); does not take effect if --cos is on')
 parser.add_argument('--cos', action='store_true', help='use cosine lr schedule')
 
-parser.add_argument('--batch-size', default=512, type=int, metavar='N', help='mini-batch size')
+parser.add_argument('--batch_size', default=128, type=int, metavar='N', help='mini-batch size')
+parser.add_argument('--num_workers', default=0, type=int)
 parser.add_argument('--wd', default=5e-4, type=float, metavar='W', help='weight decay')
-
+parser.add_argument('--w', default=0.8, help='similarity threshold')
 # moco specific configs:
 parser.add_argument('--moco-dim', default=128, type=int, help='feature dimension')
 parser.add_argument('--moco-k', default=24576, type=int, help='queue size; number of negative keys')
@@ -56,7 +57,7 @@ parser.add_argument('--knn-k', default=200, type=int, help='k in kNN monitor')
 parser.add_argument('--knn-t', default=0.1, type=float, help='softmax temperature in kNN monitor; could be different with moco-t')
 
 # utils
-parser.add_argument('--resume', default='moco2/model_last.pth', type=str, metavar='PATH', help='path to latest checkpoint (default: none)')
+parser.add_argument('--resume', default='model_last.pth', type=str, metavar='PATH', help='path to latest checkpoint (default: none)')
 parser.add_argument('--results-dir', default='', type=str, metavar='PATH', help='path to cache (default: none)')
 
 '''
@@ -73,14 +74,13 @@ if args.results_dir == '':
     args.results_dir = './cache-' + datetime.now().strftime("%Y-%m-%d-%H-%M-%S-moco")
 
 print(args)
-
 """### Define data loaders"""
 from torch.utils.data import TensorDataset, DataLoader
 from torch.utils.data import DataLoader, Dataset
 class Mydata(Dataset) :
     def __init__(self, transform=None):
         super(Mydata, self).__init__()
-        with open('甲骨文手动去重新版最终版 - 副本.json', 'r', encoding='utf8') as f:
+        with open('MOCO_train.json', 'r', encoding='utf8') as f:
             images = json.load(f)
             labels = images
         self.images, self.labels = images, labels
@@ -97,13 +97,14 @@ class Mydata(Dataset) :
             transforms.ToTensor(),
             transforms.Normalize([0.7482745, 0.7510818, 0.7501316], [0.36487347, 0.36375728, 0.36417565])])
         im_1 = train_transform(image)
-        return im_1, self.images[item]['label'].replace('\\', '/'),self.images[item]['path'].replace('\\', '/')
+        label = torch.from_numpy(np.array(self.images[item]['label']))
+        return im_1, label,self.images[item]['path'].replace('\\', '/')
 
     def __len__(self):
         return len(self.images)
 
 train_dataset = Mydata()
-train_loader = DataLoader(train_dataset, shuffle = False, batch_size = 64, num_workers=16)
+train_loader = DataLoader(train_dataset, shuffle = False, batch_size = args.batch_size, num_workers=args.num_workers,)
 
 """### Define base encoder"""
 
@@ -367,15 +368,10 @@ def test(net, memory_data_loader, args):
 
 
 def knn_predict(feature_bank,target_bank, pathbank,knn_k, knn_t):
-    with open('异体字2.json', 'r', encoding='utf8') as f:
-        yiti = json.load(f)
+    dataset=[]
     for ii in tqdm(range(feature_bank.size(1))):
         baselabel = target_bank[ii]
         basepath=pathbank[ii]
-        a=[]
-        for i in baselabel:
-            if i in yiti:
-                a+=yiti[i]
         temp=feature_bank.permute(1, 0)[ii]
         temp = temp.unsqueeze(0)
         sim_matrix = torch.mm(temp, feature_bank)
@@ -386,20 +382,24 @@ def knn_predict(feature_bank,target_bank, pathbank,knn_k, knn_t):
             index=int(sim_indices[0][nnn])
             label=target_bank[index]
             w = float(sim_weight[0][nnn])
-            if w<0.5:
+            if w<=args.w:
                 break
-            flag=0
-            for iii in label:
-                if iii in a:
-                    flag+=1
-            if flag==0:
-                continue
             if label!=baselabel:
 
                 path=pathbank[index]
-                if w>0.5:
-                    print(baselabel,basepath,label,path,w)
+                if w>args.w:
+
+                    data={}
+                    data['path1'] = basepath
+                    data['label1']=str(int(baselabel.item())).zfill(4)
+                    data['path2'] = path
+                    data['label2'] = str(int(label.item())).zfill(4)
+                    data['w'] = w
+                    print(data)
+                    dataset.append(copy.deepcopy(data))
                 break
+    with open('result.json', 'w', encoding='utf-8') as f:
+        json.dump(dataset, f, ensure_ascii=False)
 
 """### Start training"""
 

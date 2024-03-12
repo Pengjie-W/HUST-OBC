@@ -18,11 +18,13 @@ import pandas as pd
 
 """### Set arguments"""
 
-parser = argparse.ArgumentParser(description='Test on Chinese OCR')
+parser = argparse.ArgumentParser(description='Test on Chinese OCR Dataset')
 # utils
 parser.add_argument('--resume', default='model_last.pth', type=str, metavar='PATH', help='path to latest checkpoint (default: none)')
 parser.add_argument('--results-dir', default='test', type=str, metavar='PATH', help='path to cache (default: none)')
-parser.add_argument('--k', default=20, type=int)
+parser.add_argument('--k', default=1, type=int)#Display the top k Chinese characters by probability.
+parser.add_argument('--batch_size', default=64, type=int, metavar='N', help='mini-batch size')
+parser.add_argument('--num_workers', default=0, type=int)
 args = parser.parse_args()  # running in command line
 
 if args.results_dir == '':
@@ -30,7 +32,7 @@ if args.results_dir == '':
 print(args)
 args = parser.parse_args()  # running in command line
 
-with open('label.json', 'r', encoding='utf8') as f:
+with open('ID_to_Chinese.json', 'r', encoding='utf8') as f:
     data = json.load(f)
 class TestData(Dataset):
     def __init__(self, transform=None):
@@ -77,7 +79,7 @@ class TestData(Dataset):
         return len(self.images)
 
 test_dataset = TestData()
-test_loader = DataLoader(test_dataset, shuffle=False, batch_size=128, num_workers=0, pin_memory=True)
+test_loader = DataLoader(test_dataset, shuffle=False, batch_size = args.batch_size, num_workers=args.num_workers, pin_memory=True)
 
 
 class Residual(nn.Module):
@@ -183,7 +185,7 @@ def test(net, test_data_loader):
             path=pathlist[i]
             label=labellist[i]
             for j in label:
-                j=str(j)
+                j=str(j).zfill(5)
                 path_label.append(data[j])
             dataset[path]=path_label
         with open('result.json', 'w',encoding='utf8') as f:

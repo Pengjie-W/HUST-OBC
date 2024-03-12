@@ -22,12 +22,13 @@ parser = argparse.ArgumentParser(description='Test on HUST-OBS')
 parser.add_argument('--lr', '--learning-rate', default=0.015, type=float, metavar='LR', help='initial learning rate',
                     dest='lr')
 parser.add_argument('--epochs', default=1000, type=int, metavar='N', help='number of total epochs to run')
-parser.add_argument('--batch-size', default=512, type=int, metavar='N', help='mini-batch size')
+parser.add_argument('--batch_size', default=128, type=int, metavar='N', help='mini-batch size')
+parser.add_argument('--num_workers', default=0, type=int)
 parser.add_argument('--wd', default=5e-4, type=float, metavar='W', help='weight decay')
 
 
 # utils
-parser.add_argument('--resume', default='../model4/model_last.pth', type=str, metavar='PATH', help='path to latest checkpoint (default: none)')
+parser.add_argument('--resume', default='checkpoint_ep0600.pth', type=str, metavar='PATH', help='path to latest checkpoint (default: none)')
 parser.add_argument('--results-dir', default='test', type=str, metavar='PATH', help='path to cache (default: none)')
 args = parser.parse_args()  # running in command line
 if args.results_dir == '':
@@ -87,80 +88,11 @@ def pengzhang(image):
     return image
 
 
-class TrainData(Dataset):
-    def __init__(self, transform=None):
-        super(TrainData, self).__init__()
-        with open('train0.2.json', 'r') as f:
-            images = json.load(f)
-            labels = images
-        self.images, self.labels = images, labels
-        self.transform = transform
-
-    def __getitem__(self, item):
-        # 读取图片
-        image = Image.open(self.images[item]['path'].replace('\\','/'))
-        # 转换
-        if image.mode == 'L':
-            image = image.convert('RGB')
-        image_width, image_height = image.size
-        if image_width > image_height:
-            x = 72
-            y = round(image_height / image_width * 72)
-        else:
-            y = 72
-            x = round(image_width / image_height * 72)
-        sizey, sizex = 129, 129
-        if y < 128:
-            while sizey > 128 or sizey < 16:
-                sizey = round(random.gauss(y, 30))
-        if x < 128:
-            while sizex > 128 or sizex < 16:
-                sizex = round(random.gauss(x, 30))
-        dx = 128 - sizex  # 差值
-        dy = 128 - sizey
-        if dx > 0:
-            xl = -1
-            while xl > dx or xl < 0:
-                xl = round(dx / 2)
-                xl = round(random.gauss(xl, 10))
-        else:
-            xl = 0
-        if dy > 0:
-            yl = -1
-            while yl > dy or yl < 0:
-                yl = round(dy / 2)
-                yl = round(random.gauss(yl, 10))
-        else:
-            yl = 0
-        yr = dy - yl
-        xr = dx - xl
-        image = jioayan(image)
-        image = cv2.cvtColor(np.array(image), cv2.COLOR_RGB2BGR)
-        image = pengzhang(image)
-        image = Image.fromarray(cv2.cvtColor(image, cv2.COLOR_BGR2RGB))
-        random_gaussian_blur = RandomGaussianBlur()
-        image = random_gaussian_blur(image)
-        train_transform = transforms.Compose([
-            transforms.Resize((sizey,sizex)),
-            transforms.RandomHorizontalFlip(p=0.5),
-            transforms.Pad([xl, yl, xr, yr], fill=(255, 255, 255), padding_mode='constant'),
-            transforms.RandomRotation(degrees=(-15, 15), center=(round(64), round(64)), fill=(255, 255, 255)),
-            transforms.RandomApply([transforms.ColorJitter(0.4, 0.4, 0.4, 0.1)], p=0.8),
-            transforms.RandomGrayscale(p=0.2),
-            transforms.ToTensor(),
-            transforms.Normalize([0.85561067, 0.8557507, 0.85504097], [0.30982512, 0.30969524, 0.31024888])])
-        image = train_transform(image)
-        label = torch.from_numpy(np.array(self.images[item]['label']))
-        return image, label
-
-    def __len__(self):
-        return len(self.images)
-
 
 class TestData(Dataset):
     def __init__(self, transform=None):
         super(TestData, self).__init__()
-        with open('test0.2.json', 'r') as f:
+        with open('Validation_test.json', 'r', encoding='utf8') as f:
             images = json.load(f)
             labels = images
         self.images, self.labels = images, labels
@@ -194,7 +126,7 @@ class TestData(Dataset):
             transforms.Resize((128, 128)),
             # transforms.CenterCrop(224),
             transforms.ToTensor(),
-            transforms.Normalize([0.85561067, 0.8557507, 0.85504097], [0.30982512, 0.30969524, 0.31024888])])
+            transforms.Normalize([0.85233593, 0.85246795, 0.8517555], [0.31232414, 0.3122127, 0.31273854])])
         image = train_transform(image)
         label = torch.from_numpy(np.array(self.images[item]['label']))
         return image, label,self.images[item]['path'].replace('\\','/')
@@ -203,12 +135,9 @@ class TestData(Dataset):
         return len(self.images)
 
 
-train_dataset = TrainData()
-train_loader = DataLoader(train_dataset, shuffle=True, batch_size=128, num_workers=0, pin_memory=True)
-
 
 test_dataset = TestData()
-test_loader = DataLoader(test_dataset, shuffle=True, batch_size=128, num_workers=16, pin_memory=True)
+test_loader = DataLoader(test_dataset, shuffle=True,  batch_size = args.batch_size, num_workers=args.num_workers, pin_memory=True)
 
 
 class Residual(nn.Module):
@@ -264,7 +193,7 @@ b4 = nn.Sequential(*resnet_block(512, 256, 1024, 6, 2))
 b5 = nn.Sequential(*resnet_block(1024, 512, 2048, 2, 2))
 net = nn.Sequential(b1, b2, b3, b4, b5,
                     nn.AdaptiveAvgPool2d((1, 1)),
-                    nn.Flatten(), nn.Linear(2048, 1597))
+                    nn.Flatten(), nn.Linear(2048, 1588))
 
 net = net.cuda(0)
 
@@ -328,8 +257,8 @@ def find_key_by_value(dictionary, value):
         if val == value:
             return key
     return None  # 如果没有找到匹配的键，返回None或其他适当的值
-with open('label扣0.2.json', 'r') as f:
-    data = json.load(f)
+# with open('Validation_label.json', 'r', encoding='utf8') as f:
+#     data = json.load(f)
 
 def test(net, test_data_loader, epoch, args):
     net.eval()
@@ -341,23 +270,26 @@ def test(net, test_data_loader, epoch, args):
         for image, label,path in test_bar:
             image, label = image.cuda(0), label.cuda(0)
             y_hat = net(image)
-            y_hat = torch.argmax(y_hat, dim=1)
-            truelabel+=[int(x) for x in label.tolist()]
-            label = [int(x) for x in y_hat.tolist()]
-            labellist=labellist+label
-            path=list(path)
-            pathlist=pathlist+path
-        dataset={}
-        num=0
-        for i in range(len(pathlist)):
-            if labellist[i]!=truelabel[i]:
-                path = pathlist[i]
-                label=find_key_by_value(data,labellist[i])
-                dataset[path]=label
-                num+=1
-        print(num/len(pathlist))
-        with open('错误结果.json', 'w') as f:
-            json.dump(dataset, f, ensure_ascii=False)
+            total_num += image.shape[0]
+            testacc += accuracy(y_hat, label)
+            test_bar.set_description(
+                'Test Epoch: [{}/{}], testacc: {:.6f}'.format(epoch, args.epochs, testacc / total_num))
+        #     truelabel+=[int(x) for x in label.tolist()]
+        #     label = [int(x) for x in y_hat.tolist()]
+        #     labellist=labellist+label
+        #     path=list(path)
+        #     pathlist=pathlist+path
+        # dataset={}
+        # num=0
+        # for i in range(len(pathlist)):
+        #     if labellist[i]!=truelabel[i]:
+        #         path = pathlist[i]
+        #         label=find_key_by_value(data,labellist[i])
+        #         dataset[path]=label
+        #         num+=1
+        # print(num/len(pathlist))
+        # with open('错误结果.json', 'w') as f:
+        #     json.dump(dataset, f, ensure_ascii=False)
     return testacc / total_num
 
 results = {'train_loss': [], 'train_acc': [],'test_acc': [], 'lr': []}
@@ -371,7 +303,8 @@ if args.resume != '':
 else:
     net.apply(init_weights)
 
-for epoch in range(epoch_start, args.epochs + 1):
-    test_acc = test(net, test_loader, epoch, args)
-    results['test_acc'].append(test_acc)
-    results['lr'].append(args.lr * 0.5 * (1. + math.cos(math.pi * epoch / args.epochs)))
+# for epoch in range(epoch_start, args.epochs + 1):
+#     test_acc = test(net, test_loader, epoch, args)
+#     print(test_acc)
+test_acc = test(net, test_loader, epoch_start, args)
+print(test_acc)
