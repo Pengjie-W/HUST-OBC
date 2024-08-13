@@ -6,6 +6,8 @@ from datetime import datetime
 import cv2
 import numpy as np
 import torch
+import torchvision
+from sklearn.metrics import f1_score
 from torch.nn import functional as F
 from PIL import Image
 from torch import nn
@@ -19,7 +21,7 @@ import pandas as pd
 
 
 """### Set arguments"""
-parser = argparse.ArgumentParser(description='Train on HUST-OBS')
+parser = argparse.ArgumentParser(description='Train on HUST-OBC')
 
 parser.add_argument('--lr', '--learning-rate', default=0.015, type=float, metavar='LR', help='initi'
                                                                                              'al learning rate',
@@ -32,7 +34,7 @@ parser.add_argument('--wd', default=5e-4, type=float, metavar='W', help='weight 
 # utils
 parser.add_argument('--resume', default='', type=str, metavar='PATH', help='path to latest checkpoint (default: none)')
 parser.add_argument('--results-dir', default='output', type=str, metavar='PATH', help='path to cache (default: none)')
-parser.add_argument('--checkpoint_freq', type=int, default=10)
+parser.add_argument('--checkpoint_freq', type=int, default=100)
 parser.add_argument('--seed', type=int, default=42)
 args = parser.parse_args()  # running in command line
 if args.results_dir == '':
@@ -59,7 +61,7 @@ class RandomGaussianBlur(object):
         else:
             return img
 
-# nohup python train.py > output.log 2>&1 &^C
+# nohup python train_new.py > output.log 2>&1 &^C
 def jioayan(image):
     if np.random.random() < 0.5:
         image1 = np.array(image)
@@ -165,10 +167,10 @@ class TrainData(Dataset):
         return len(self.images)
 
 
-class TestData(Dataset):
+class ValData(Dataset):
     def __init__(self, transform=None):
-        super(TestData, self).__init__()
-        with open('Validation_test.json', 'r',encoding='utf8') as f:
+        super(ValData, self).__init__()
+        with open('Validation_val.json', 'r',encoding='utf8') as f:
             images = json.load(f)
             labels = images
         self.images, self.labels = images, labels
@@ -215,68 +217,14 @@ train_dataset = TrainData()
 train_loader = DataLoader(train_dataset, shuffle=True, batch_size = args.batch_size, num_workers=args.num_workers, pin_memory=True)
 
 
-test_dataset = TestData()
-test_loader = DataLoader(test_dataset, shuffle=True, batch_size = args.batch_size, num_workers=args.num_workers, pin_memory=True)
+val_dataset = ValData()
+val_loader = DataLoader(val_dataset, shuffle=True, batch_size = args.batch_size, num_workers=args.num_workers, pin_memory=True)
 
 
-class Residual(nn.Module):
-    def __init__(self, input_channels, min_channels, num_channels,
-                 use_1x1conv=False, strides=1):
-        super().__init__()
-        self.conv1 = nn.Conv2d(input_channels, min_channels,
-                               kernel_size=1)
-        self.conv2 = nn.Conv2d(min_channels, min_channels,
-                               kernel_size=3, padding=1, stride=strides)
-        self.conv3 = nn.Conv2d(min_channels, num_channels,
-                               kernel_size=1)
-        if use_1x1conv:
-            self.conv4 = nn.Conv2d(input_channels, num_channels,
-                                   kernel_size=1, stride=strides)
-        else:
-            self.conv4 = None
-        self.bn1 = nn.BatchNorm2d(min_channels)
-        self.bn2 = nn.BatchNorm2d(min_channels)
-        self.bn3 = nn.BatchNorm2d(num_channels)
-
-    def forward(self, X):
-        Y = F.relu(self.bn1(self.conv1(X)))
-        Y = self.bn2(self.conv2(Y))
-        Y = self.bn3(self.conv3(Y))
-        if self.conv4:
-            X = self.conv4(X)
-        Y += X
-        return F.relu(Y)
-
-
-b1 = nn.Sequential(nn.Conv2d(3, 64, kernel_size=7, stride=2, padding=3),
-                   nn.BatchNorm2d(64), nn.ReLU(),
-                   nn.MaxPool2d(kernel_size=3, stride=2, padding=1))
-
-
-def resnet_block(input_channels, min_channels, num_channels, num_residuals, stride,
-                 first_block=False):
-    blk = []
-    for i in range(num_residuals):
-        if i == 0 and not first_block:
-            blk.append(Residual(input_channels, min_channels, num_channels,
-                                use_1x1conv=True, strides=stride))
-        elif first_block and i == 0:
-            blk.append(Residual(input_channels, min_channels, num_channels, use_1x1conv=True))
-        else:
-            blk.append(Residual(num_channels, min_channels, num_channels))
-    return blk
-
-
-b2 = nn.Sequential(*resnet_block(64, 64, 256, 3, 2, first_block=True))
-b3 = nn.Sequential(*resnet_block(256, 128, 512, 4, 2))
-b4 = nn.Sequential(*resnet_block(512, 256, 1024, 6, 2))
-b5 = nn.Sequential(*resnet_block(1024, 512, 2048, 2, 2))
-net = nn.Sequential(b1, b2, b3, b4, b5,
-                    nn.AdaptiveAvgPool2d((1, 1)),
-                    nn.Flatten(), nn.Linear(2048, 1588))
-
+net = torchvision.models.resnet50(pretrained=False)
+num_ftrs = net.fc.in_features
+net.fc = nn.Linear(num_ftrs, 1588)
 net = net.cuda(0)
-
 
 def init_weights(m):
     if type(m) == nn.Linear or type(m) == nn.Conv2d:
@@ -311,11 +259,15 @@ def train(net, data_loader, train_optimizer, epoch, args):
     net.train()
     adjust_learning_rate(optimizer, epoch, args)
     total_loss, total_num, trainacc, train_bar = 0.0, 0, 0.0, tqdm(data_loader,ncols=100)
+    all_labels = []
+    all_preds = []
     for image, label in train_bar:
         image, label = image.cuda(0), label.cuda(0)
         label = label.long()
         y_hat = net(image)
-
+        _, preds = torch.max(y_hat, 1)
+        all_labels.extend(label.cpu().numpy())
+        all_preds.extend(preds.cpu().numpy())
         train_optimizer.zero_grad()
         l = loss(y_hat, label)
         l.backward()
@@ -329,26 +281,41 @@ def train(net, data_loader, train_optimizer, epoch, args):
                                                                                       optimizer.param_groups[0]['lr'],
                                                                                       total_loss / total_num,
                                                                                       trainacc / total_num))
+    # 计算 F1 分数
+    f1_macro = f1_score(all_labels, all_preds, average='macro')
+    f1_micro = f1_score(all_labels, all_preds, average='micro')
+    # print(f'Macro-averaged F1 score: {f1_macro}')
+    # print(f'Micro-averaged F1 score: {f1_micro}')
 
-    return total_loss / total_num, trainacc / total_num
+    return total_loss / total_num, trainacc / total_num,f1_macro,f1_micro
 
 
-def test(net, test_data_loader, epoch, args):
+def val(net, val_data_loader, epoch, args):
     net.eval()
-    testacc, total_top5, total_num, test_bar = 0.0, 0.0, 0, tqdm(test_data_loader)
+    valacc, total_top5, total_num, val_bar = 0.0, 0.0, 0, tqdm(val_data_loader)
+    all_labels = []
+    all_preds = []
     with torch.no_grad():
-        for image, label in test_bar:
+        for image, label in val_bar:
             image, label = image.cuda(0), label.cuda(0)
             y_hat = net(image)
+            _, preds = torch.max(y_hat, 1)
+            all_labels.extend(label.cpu().numpy())
+            all_preds.extend(preds.cpu().numpy())
             total_num+=image.shape[0]
-            testacc += accuracy(y_hat, label)
-            test_bar.set_description(
-                'Test Epoch: [{}/{}], testacc: {:.6f}'.format(epoch, args.epochs, testacc / total_num))
-    return testacc / total_num
+            valacc += accuracy(y_hat, label)
+            val_bar.set_description(
+                'Val Epoch: [{}/{}], valacc: {:.6f}'.format(epoch, args.epochs, valacc / total_num))
+    # 计算 F1 分数
+    f1_macro = f1_score(all_labels, all_preds, average='macro')
+    f1_micro = f1_score(all_labels, all_preds, average='micro')
+    # print(f'Macro-averaged F1 score: {f1_macro}')
+    # print(f'Micro-averaged F1 score: {f1_micro}')
+    return valacc / total_num,f1_macro,f1_micro
 
 
-# results = {'train_loss': [], 'train_acc': [], 'test_acc': []}
-results = {'train_loss': [], 'train_acc': [],'test_acc': [], 'lr': []}
+# results = {'train_loss': [], 'train_acc': [], 'val_acc': []}
+results = {'train_loss': [], 'train_acc': [],'train_f1_macro':[],'train_f1_micro':[],'val_acc': [],'val_f1_macro':[],'val_f1_micro':[], 'lr': []}
 epoch_start = 1
 if args.resume != '':
     checkpoint = torch.load(args.resume)
@@ -363,12 +330,19 @@ if not os.path.exists(args.results_dir):
     os.mkdir(args.results_dir)
 with open(args.results_dir + '/args.json', 'w') as fid:
     json.dump(args.__dict__, fid, indent=2)
+max_val_acc=0
+max_val_f1_macro=0
+max_val_f1_micro=0
 for epoch in range(epoch_start, args.epochs + 1):
-    train_loss, train_acc = train(net, train_loader, optimizer, epoch, args)
+    train_loss, train_acc,train_f1_macro,train_f1_micro = train(net, train_loader, optimizer, epoch, args)
     results['train_loss'].append(train_loss)
     results['train_acc'].append(train_acc)
-    test_acc = test(net, test_loader, epoch, args)
-    results['test_acc'].append(test_acc)
+    results['train_f1_macro'].append(train_f1_macro)
+    results['train_f1_micro'].append(train_f1_micro)
+    val_acc,val_f1_macro,val_f1_micro = val(net, val_loader, epoch, args)
+    results['val_acc'].append(val_acc)
+    results['val_f1_macro'].append(val_f1_macro)
+    results['val_f1_micro'].append(val_f1_micro)
     results['lr'].append(args.lr * 0.5 * (1. + math.cos(math.pi * epoch / args.epochs)))
     # save statistics
     data_frame = pd.DataFrame(data=results, index=range(epoch_start, epoch + 1))
@@ -378,3 +352,21 @@ for epoch in range(epoch_start, args.epochs + 1):
         # save model
         torch.save({'epoch': epoch, 'state_dict': net.state_dict(), 'optimizer': optimizer.state_dict(), },
                    args.results_dir + '/'+checkpoint_name)
+    if epoch>300 and max_val_acc<val_acc:
+        max_val_acc=val_acc
+        checkpoint_name = f'max_val_acc.pth'
+        # save model
+        torch.save({'epoch': epoch, 'state_dict': net.state_dict(), 'optimizer': optimizer.state_dict(), },
+                   args.results_dir + '/' + checkpoint_name)
+    if epoch>300 and max_val_f1_macro<val_f1_macro:
+        max_val_f1_macro=val_f1_macro
+        checkpoint_name = f'max_val_f1_macro.pth'
+        # save model
+        torch.save({'epoch': epoch, 'state_dict': net.state_dict(), 'optimizer': optimizer.state_dict(), },
+                   args.results_dir + '/' + checkpoint_name)
+    if epoch>300 and max_val_f1_micro<val_f1_micro:
+        max_val_f1_micro=val_f1_micro
+        checkpoint_name = f'max_val_f1_micro.pth'
+        # save model
+        torch.save({'epoch': epoch, 'state_dict': net.state_dict(), 'optimizer': optimizer.state_dict(), },
+                   args.results_dir + '/' + checkpoint_name)

@@ -39,7 +39,7 @@ class TrainData(Dataset) :
 
         image = train_transform(image)
         train_transform = transforms.Compose([
-            transforms.Resize((128, 128)),
+            transforms.Resize((224, 224)),
             transforms.ToTensor(),])
         image = train_transform(image)
         return image,self.images[item]['label']
@@ -55,7 +55,7 @@ def getStat(train_data):
     print('Compute mean and variance for training data.')
     print(len(train_data))
     train_loader = torch.utils.data.DataLoader(
-        train_data, batch_size=1, shuffle=False, num_workers=18,
+        train_data, batch_size=1, shuffle=False, num_workers=4,
         pin_memory=True)
     mean = torch.zeros(3)
     std = torch.zeros(3)

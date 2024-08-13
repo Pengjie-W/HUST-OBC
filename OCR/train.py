@@ -93,7 +93,7 @@ class TrainData(Dataset):
 
     def __getitem__(self, item):
         # 读取图片
-        image = Image.open(self.images[item]['path'])
+        image = Image.open(self.images[item]['path'].replace('\\','/'))
         # 转换
         if image.mode == 'L':
             image = image.convert('RGB')
