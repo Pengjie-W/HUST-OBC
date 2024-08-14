@@ -28,7 +28,7 @@ import torch.nn.functional as F
 
 """### Set arguments"""
 
-parser = argparse.ArgumentParser(description='Test MoCo on HUST-OBS')
+parser = argparse.ArgumentParser(description='Test MoCo on HUST-OBC')
 
 parser.add_argument('-a', '--arch', default='resnet18')
 

@@ -19,7 +19,7 @@ from tqdm import tqdm
 import pandas as pd
 
 """### Set arguments"""
-parser = argparse.ArgumentParser(description='Test on HUST-OBS')
+parser = argparse.ArgumentParser(description='Test on HUST-OBC')
 
 parser.add_argument('--lr', '--learning-rate', default=0.015, type=float, metavar='LR', help='initial learning rate',
                     dest='lr')

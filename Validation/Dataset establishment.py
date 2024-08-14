@@ -13,7 +13,7 @@ random.seed(seed)
 dataset = []
 X = []
 y = []
-for root, directories, files in os.walk('../HUST-OBS/deciphered/'):
+for root, directories, files in os.walk('../HUST-OBC/deciphered/'):
     for file in files:
         data = {}
         if 'json' in file:

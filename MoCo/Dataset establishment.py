@@ -5,7 +5,7 @@ import shutil
 from tqdm import tqdm
 import random
 
-folder_path = '../HUST-OBS/deciphered'
+folder_path = '../HUST-OBC/deciphered'
 dataset = []
 for root, directories, files in tqdm(os.walk(folder_path)):
 
