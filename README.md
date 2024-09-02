@@ -3,8 +3,13 @@
 </p> -->
 
 # HUST-OBC
+[![Paper](https://img.shields.io/badge/Paper-white)](https://arxiv.org/abs/2401.15365)
+[![figshare](https://img.shields.io/badge/figshare-blue)](https://doi.org/10.6084/m9.figshare.25040543.v3)
+[![Download Dataset](https://img.shields.io/badge/hyper.ai-pink)](https://hyper.ai/datasets/33506)
+
 Oracle Bone Script data collected by VLRLab of HUST
 We have open-sourced the HUST-OBC dataset and the models used in the dataset, including: Chinese OCR, MoCo, and the ResNet50 for Validation.
+
 ## HUST-OBC Dataset
 [HUST-OBC Download](https://figshare.com/s/8a9c0420312d94fc01e3)
 ### Tree of our dataset
