@@ -13,7 +13,7 @@ We have open-sourced the HUST-OBC dataset and the models used in the dataset, in
 ## HUST-OBC Dataset
 [HUST-OBC Download](https://figshare.com/s/8a9c0420312d94fc01e3)
 ### Tree of our dataset
-- HUST-OBC **(We have renamed HUST-OBS to HUST-OBC.)**
+- HUST-OBC **(We have renamed HUST-OBS to HUST-OBC)**
   - deciphered
     - ID1
       - Source_ID1_Filename
