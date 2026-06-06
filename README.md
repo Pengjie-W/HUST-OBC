@@ -5,6 +5,7 @@
 # HUST-OBC
 [![Paper](https://img.shields.io/badge/Paper-white)](https://arxiv.org/abs/2401.15365)
 [![figshare](https://img.shields.io/badge/figshare-blue)](https://doi.org/10.6084/m9.figshare.25040543.v3)
+[![ModelScope Download](https://img.shields.io/badge/ModelScope-Download-blue)](https://www.modelscope.cn/datasets/wpj2003/HUST)
 [![Download Dataset](https://img.shields.io/badge/hyper.ai-pink)](https://hyper.ai/datasets/33506)
 
 Oracle Bone Character data collected by VLRLab of HUST
@@ -12,6 +13,10 @@ We have open-sourced the HUST-OBC dataset and the models used in the dataset, in
 
 ## HUST-OBC Dataset
 [HUST-OBC Download](https://figshare.com/s/8a9c0420312d94fc01e3)
+
+[HUST-OBC on ModelScope](https://www.modelscope.cn/datasets/wpj2003/HUST)
+
+You can download HUST-OBC from either Figshare or ModelScope. For ModelScope, open the dataset page above, sign in if required, click the download button on the page, and extract the downloaded files. After extraction, keep the dataset folder structure consistent with the tree below.
 ### Tree of our dataset
 - HUST-OBC **(We have renamed HUST-OBS to HUST-OBC)**
   - deciphered
@@ -103,4 +108,3 @@ The code for training and testing (usage) is provided in the Validation folder. 
 
 You can use [train.py](Validation/train.py) for fine-tuning or retraining. Once the model is downloaded, you can use [test.py](Validation/test.py) to validate the test set with an accuracy of 94.6%. [log.csv](Validation/log.csv) records the changes in training set accuracy and test set accuracy for each epoch. 
 [Validation_label.json](Validation/Validation_label.json) stores the relationship between classification IDs and dataset category IDs.
-
