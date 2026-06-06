@@ -5,7 +5,7 @@
 # HUST-OBC
 [![Paper](https://img.shields.io/badge/Paper-white)](https://arxiv.org/abs/2401.15365)
 [![figshare](https://img.shields.io/badge/figshare-blue)](https://doi.org/10.6084/m9.figshare.25040543.v3)
-[![ModelScope Download](https://img.shields.io/badge/ModelScope-Download-blue)](https://www.modelscope.cn/datasets/wpj2003/HUST)
+[![ModelScope Download](https://img.shields.io/badge/ModelScope-Download-blue)](https://www.modelscope.cn/datasets/wpj2003/HUST-OBC)
 [![Download Dataset](https://img.shields.io/badge/hyper.ai-pink)](https://hyper.ai/datasets/33506)
 
 Oracle Bone Character data collected by VLRLab of HUST
@@ -14,7 +14,7 @@ We have open-sourced the HUST-OBC dataset and the models used in the dataset, in
 ## HUST-OBC Dataset
 [HUST-OBC Download](https://figshare.com/s/8a9c0420312d94fc01e3)
 
-[HUST-OBC on ModelScope](https://www.modelscope.cn/datasets/wpj2003/HUST)
+[HUST-OBC on ModelScope](https://www.modelscope.cn/datasets/wpj2003/HUST-OBC)
 
 You can download HUST-OBC from either Figshare or ModelScope. For ModelScope, open the dataset page above, sign in if required, click the download button on the page, and extract the downloaded files. After extraction, keep the dataset folder structure consistent with the tree below.
 ### Tree of our dataset
