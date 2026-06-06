@@ -12,11 +12,26 @@ Oracle Bone Character data collected by VLRLab of HUST
 We have open-sourced the HUST-OBC dataset and the models used in the dataset, including: Chinese OCR, MoCo, and the ResNet50 for Validation.
 
 ## HUST-OBC Dataset
-[HUST-OBC Download](https://figshare.com/s/8a9c0420312d94fc01e3)
+Download **HUST-OBC.zip** directly:
 
-[HUST-OBC on ModelScope](https://www.modelscope.cn/datasets/wpj2003/HUST-OBC)
+- [HUST-OBC.zip on Figshare](https://figshare.com/ndownloader/files/48465988?private_link=8a9c0420312d94fc01e3)
+- [HUST-OBC.zip on ModelScope](https://www.modelscope.cn/datasets/wpj2003/HUST-OBC/resolve/master/HUST-OBC.zip)
 
-You can download HUST-OBC from either Figshare or ModelScope. For ModelScope, open the dataset page above, sign in if required, click the download button on the page, and extract the downloaded files. After extraction, keep the dataset folder structure consistent with the tree below.
+You can also download the full dataset from ModelScope with the SDK or Git:
+
+```python
+from modelscope.msdatasets import MsDataset
+
+ds = MsDataset.load('wpj2003/HUST-OBC')
+# Configure subset_name and split as needed.
+```
+
+```bash
+git lfs install
+git clone https://www.modelscope.cn/datasets/wpj2003/HUST-OBC.git
+```
+
+After downloading **HUST-OBC.zip**, extract it and keep the dataset folder structure consistent with the tree below.
 ### Tree of our dataset
 - HUST-OBC **(We have renamed HUST-OBS to HUST-OBC)**
   - deciphered
@@ -69,7 +84,7 @@ pip install -r requirements.txt
 To use MoCo or Validation, you need to download HUST-OBC. You can then directly use their trained models for prediction. If you want to use Chinese OCR, please download the OCR dataset and the corresponding model. After downloading, organize the data as follows.
  <!-- Just a reminder, after extraction in Windows, there might be a nested folder. For instance, within HUST-OBC, there could be another HUST-OBC, resulting in an additional layer of folders. Resolving this issue should enable normal usage. -->
 - Your_dataroot
-  - [HUST-OBC](https://figshare.com/s/8a9c0420312d94fc01e3)
+  - [HUST-OBC](https://www.modelscope.cn/datasets/wpj2003/HUST-OBC/resolve/master/HUST-OBC.zip)
     - deciphered
     - ...
   - MoCo
