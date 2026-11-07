@@ -547,7 +547,7 @@ optimizer = torch.optim.SGD(model.parameters(), lr=args.lr, weight_decay=args.wd
 # load model if resume
 epoch_start = 1
 if args.resume is not '':
-    checkpoint = torch.load(args.resume, map_location=torch.device('cuda:0'))
+    checkpoint = torch.load(args.resume, map_location=torch.device('cuda:0'), weights_only=True)
     model.load_state_dict(checkpoint['state_dict'])
     optimizer.load_state_dict(checkpoint['optimizer'])
     epoch_start = checkpoint['epoch'] + 1
